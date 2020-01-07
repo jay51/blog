@@ -1,0 +1,51 @@
+---
+title: What I use to blog
+date: 2019-04-15
+---
+
+I looked for many platforms to make this easy for me; 
+I looked at wordpress but it was on overkill and very slow for my simple use case.
+I could've probably done some configuration to make it faster but I didn't want to deal with it.
+I wanted something simple, fast and cheep.
+I also looked at [github pages](https://pages.github.com/) but writing html and css by hand was very
+tedious. so I sesettled on [Gatsby](https://www.gatsbyjs.org/) (static site generater).
+
+
+Gatsby make things much easier And have many plugins to help you get going fast.
+You could use gatsby on the server or the client. Gatsby is basically Reactjs with a bit more.
+
+
+For this blog I use `gatsby-theme-blog`.
+it's very easy to setup!
+
+- First install nodejs, npm, and the `gatsby-cli`
+- Start a new project `gatsby new <project-name> <url-for-starter-repo>`
+- Create blog posts
+
+### To install Gatsby-cli
+```js
+npm install -g gatsby-cli
+// or install locally and use npx to use
+npm install gatsby-cli
+// and when using gatsby, you use npx
+npx gatsby
+```
+
+
+### Create blog template
+
+```jsx
+gatsby new my-blog https://github.com/gatsbyjs/gatsby-starter-blog-theme
+// or if you installed gatsby locally, use
+npx gatsby new my-blog https://github.com/gatsbyjs/gatsby-starter-blog-theme
+```
+
+### To run the dev server
+```js
+cd my-blog && gatsby develop
+// or
+cd my-blog && sudo npx gatsby develop
+```
+
+And finally I use github and netlify to host my blog.
+
