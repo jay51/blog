@@ -1,0 +1,311 @@
+---
+title: Docker-compose an express and mongo App
+date: 2018-09-18
+---
+
+
+Docker is a Tool that enables you to containerize your dev environment and by so helps you be more productive to focuses more on the code and stop worrying about setting up your environment to match all your teammate's workspace.
+
+Docker-compose is another tool that works with docker to group containers or services to work together as one App. 
+
+##### you need to install Docker and Docker-compose to follow
+
+
+### First, write a Simple express server
+
+`index.js`
+```javascript
+const mongoose = require('mongoose');
+const app = require('express')();
+
+
+app.set('view engine', 'ejs');
+app.use(express.urlencoded({ extended: false }));
+
+app.get('/', (req, res) =>{
+    res.send("it's working :)")   
+})
+
+const port = 3000;
+app.listen(port, () => console.log('Server running...'));
+
+```
+
+In the above code, we require a couple of modules that we will work with later. And write a small server to listen for **GET** `/` route.
+
+### Next let's add database connection and write the schema 
+
+`index.js`
+```javascript
+const mongoose = require('mongoose');
+const app = require('express')();
+
+
+// connect to Mongo daemon
+mongoose
+  .connect(
+    'mongodb://localhost/express-mongo',
+    { useNewUrlParser: true }
+  )
+  .then(() => console.log('MongoDB Connected'))
+  .catch(err => console.log(err));
+
+
+// DB schema
+const ItemSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  date: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+Item = mongoose.model('item', ItemSchema);
+app.set('view engine', 'ejs');
+app.use(express.urlencoded({ extended: false }));
+
+app.get('/', (req, res) =>{
+    res.send("it's working :)")   
+})
+
+
+const port = 3000;
+app.listen(port, () => console.log('Server running...'));
+
+``` 
+
+### changes
+1. added DB 
+2. Added Schema for our app
+ 
+**Note:** we're connecting to localhost for now but this will change as we bring the mongo `Image` from Docker Hub. If you don't have **MongoDB** installed it's ok you don't need to install anything.
+
+
+### Next let's make a simple **`ejs`** view
+
+`/views/index.ejs`
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>My Node App</title>
+</head>
+
+<body>
+  <h1>My Node App</h1>
+  <form method="post" action="/item/add">
+    <label for="name">Name</label>
+    <input type="text" name="name">
+    <input type="submit" value="Add">
+  </form>
+</body>
+
+</html>
+
+```
+so, it's just a simple view that displays a form and submits the form to `/item/add` 
+
+
+### Next we create the post and get routes for our posts
+
+`index.js`
+```javascript
+const mongoose = require('mongoose');
+const app = require('express')();
+
+
+// connect to Mongo daemon
+mongoose
+  .connect(
+    'mongodb://localhost/express-mongo',
+    { useNewUrlParser: true }
+  )
+  .then(() => console.log('MongoDB Connected'))
+  .catch(err => console.log(err));
+
+
+// DB schema
+const ItemSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  date: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+Item = mongoose.model('item', ItemSchema);
+app.set('view engine', 'ejs');
+app.use(express.urlencoded({ extended: false }));
+
+app.get('/', (req, res) =>{
+    Item.find((err, {}) => {
+      if (err) throw err;
+      res.render("index", { items });
+    });
+})
+
+
+//Post route
+app.post('/item/add', (req, res) => {
+  const newItem = new Item({
+    name: req.body.name
+  });
+
+  newItem.save().then(item => res.redirect('/'));
+});
+
+
+
+const port = 3000;
+app.listen(port, () => console.log('Server running...'));
+
+``` 
+Now, the first GET`/` route will display the form and all the posts. 
+The POST`/item/add` route will take the data, create an item in DB and redirect back to `/`. 
+An item can be anything really, we don't care as it's not the main point of this *Post*. 
+**Also** let's change our `/view/index.ejs` to take the items from the GET`/` route and show it to the user.
+<br/>
+
+`/views/index.ejs`
+
+```html
+
+  <h4>names:</h4>
+  <ul>
+    {
+      "items".foreach(item =>(
+        <li> item </li>
+      ))
+    }
+  </ul>
+
+```
+**Important:** This is not how it's done in ejs but it's just to show you what 
+needs to be don. Add this under the `Form` in `index.ejs`
+
+### Now let's dive into docker
+First, let's make our `Dockerfile` to *build* a nodejs image out of the `Dockerfile`
+
+`/Dockerfile`
+```javascript
+FROM node:10 //pull a node image from docker hub
+
+WORKDIR /app //set the working dir to /app
+
+COPY package.json package.json //copy package.json to the container
+
+RUN npm install // install package.json modules in container
+
+COPY . . //copy everything to container /app
+
+EXPOSE 3000 //expose port 3000 to mount it to another port in local machine 
+
+RUN npm install -g nodemon // install nodemon for changes on the fly
+
+CMD [ "nodemon", "index.js" ] // start server inside container
+```
+
+1. The first line `From` pulls a nodejs image
+2. The second line set the working place inside the container
+3. Copy package.json to working dir inside the container 
+4. Install package.json modules inside the container
+5. Copy all files in the current dir to workdir in the container
+6. Expose port 3000 to map it to some other port on our machine to access the app \
+7. Install nodemon inside the container
+8. Run the app
+
+
+### Next we need to create the docker compose
+The `docker-compose.yml` will enable us to run multiple containers all together to build our app. 
+So let's make a `docker-compose.yml` file.
+
+`/docker-compose.yml`
+```javascript
+version: "3"
+services:
+  app:
+    container_name: express-mongo
+    restart: always
+    build: ./
+    ports:
+      - "80:3000"
+    volumes:
+      - .:/app
+    links:
+      - mongo
+  mongo:
+    container_name: mongo
+    image: mongo
+    ports:
+      - "27017:27017"
+```
+1. First Line tells docker what version of docker-compose to use(3 is the latest).
+2. The second line defines the services that we will have which in this case are (node container and mongo container)
+3. Line 3 defines the services name (it could be anything)
+4. Line 4 defines the container name
+5. Line 5 tells docker container to restart if anything crash (notice this is only for nodejs container)
+6. Line 6 build the nodejs image from the `Dockerfile` that we created earlier.
+7. Line 7 mount port 3000 in the container to port 80 on our machine
+8. Line 8 bind all files in our local workdir to the workdir in the container to make updates and changes in real time.
+
+9. Line 9 links mongo container to node container to let them communicate together (on the same default docker network)
+10. Line10 creates other services (mongo)
+11. Line 11 defines the container name
+    12. Line 12 pulls mongo image from docker hub (you could also make a Dockerfile for this image but it's not necessary for this simple case)
+13. Line 13 expose port 27017 in mongo container to our local machine to be able to communicate with mongo
+
+### Next we need to change the path to connect to MongoDB
+**Change this**
+`index.js`
+```javascript
+mongodb://localhost/express-mongo
+``` 
+To this
+`index.js`
+```javascript
+mongodb://mongo:27017/expressmongo
+``` 
+This will connect to the mongo container exposed port *27017*
+
+#### Now moment of truth
+##### Run this command in your terminal
+```javascript
+docker-compose up
+//or 
+docker-compose up -d //to run docker-compose in background
+```
+Now check your browser on port 80 for the app.
+##### To stop it, hit `ctl+c`
+##### If you have it runing in background type `docker-compose stop` to stop it.
+##### To remove both containers run docker-compose down 
+
+### Now you can push the project to github and pull it down from any machine and it will work out of the box as long as you have docker and docker-compose.
+
+**Note:** when you pull the code from githup you need to install all node_modules by doing `npm install` because the container will look for express and all other modules inside node_modules on your machine. **If** you don't want to install any node_modules on your machine you need to add this to your `docker-compose.yml`
+
+#### Under volumes add this
+```javascript
+- /app/node_modules // now all you need to do is run docker-compose up
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
