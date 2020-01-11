@@ -1,0 +1,118 @@
+---
+title: Introduction to gcc
+date: 2019-11-11
+---
+
+# Introduction to gcc
+
+`gcc` `GNU Compiler Collection`  is what I use on linux to compile `C` source files to binary. `gcc` is just the front-end for the collection of tools that process your binary. Meaning `gcc` will take your binary and pass it down along with some flags to a collection of `GNU` tools that process your binary in stages and finally output a binary executable.  `clang` is another front-end that will compile `C` source files using `llvm` in the back-end. [`clang`](https://en.wikipedia.org/wiki/Clang) was made by google as a replacement for `gcc`, but It's not any better in my opinion.
+
+This post will focus on `gcc` and break down the 4 stages gcc take to compile to an executable binary. 
+
+```c
+// main.c
+#include<stdio.h>
+int main(){
+	// typical hello world
+	printf("hello world\n");
+}
+```
+
+## The preprocessor
+The first stage of the compilation process is the use of the preprocessor to expand macros and included header files. To perform this stage, `gcc` 
+executes the following command: `cpp main.c > main.i`
+
+`cpp` is the `c preprocessor`. By convention, preprocessed files are given the file extension '.i' for C programs and '.ii' for C++ programs.
+```c
+....
+extern int ftrylockfile (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__)) ;
+extern void funlockfile (FILE *__stream) __attribute__ ((__nothrow__ , __leaf__));
+# 858 "/usr/include/stdio.h" 3 4
+extern int __uflow (FILE *);
+extern int __overflow (FILE *, int);
+# 873 "/usr/include/stdio.h" 3 4
+# 4 "main.c" 2
+# 4 "main.c"
+int main(){
+    printf("hello world\n");
+}
+```
+As you can see, the output is very big because we're including `<stdio.h>`.
+
+##  The compiler
+The next stage of the process is the actual compilation of preprocessed source code to assembly language, 
+for a specific processor. The command-line option `-S` instructs `gcc` to convert the preprocessed C 
+source code to assembly language.
+
+`gcc -S main.i`
+
+```c
+; main.s
+        .file   "main.c"
+        .text
+        .section        .rodata
+.LC0:
+        .string "hello world"
+        .text
+        .globl  main
+        .type   main, @function
+main:
+.LFB0:
+        .cfi_startproc
+        pushq   %rbp
+        .cfi_def_cfa_offset 16
+        .cfi_offset 6, -16
+        movq    %rsp, %rbp
+        .cfi_def_cfa_register 6
+        movl    $.LC0, %edi
+        call    puts
+        movl    $0, %eax
+        popq    %rbp
+        .cfi_def_cfa 7, 8
+        ret
+        .cfi_endproc
+.LFE0:
+        .size   main, .-main
+        .ident  "GCC: (GNU) 9.2.1 20190827 (Red Hat 9.2.1-1)"
+        .section        .note.GNU-stack,"",@progbits
+```
+The result of the previous command is this file `main.s`. This file contains the assembly language for your particular arch. 
+**Note:** `gcc` uses `as` gnu assembler for assembling this file. however it's possible to use different assembler like nasm (the only real difference is the syntax).
+
+## The assembler
+The purpose of the assembler is to convert assembly language into machine code and generate an object file. 
+When there are calls to external functions in the assembly source file, 
+the assembler leaves the addresses of the external functions undefined, to be filled in later by the linker. 
+The assembler can be invoked with the following command line: `as main.s -o main.o`
+
+This will generate a binary object file. however in order to execute this file, 
+you need to link the binary to the external functions from `libc` such as `printf` and many others. 
+The resulting file `hello.o` contains the machine instructions for the _Hello World_ program, 
+with an undefined reference to `printf`.
+
+
+## The linker
+The final stage of compilation is the linking of object files to create an executable. In practice, an executable requires many external functions from system and C run-time (`crt`) libraries. Consequently, the actual link commands used internally by GCC are complicated. For example, the full command for linking the _Hello World_ program is:
+
+`$ ld -dynamic-linker /lib/ld-linux.so.2 /usr/lib/crt1.o 
+ /usr/lib/crti.o /usr/lib/gcc-lib/i686/3.3.1/crtbegin.o 
+ -L/usr/lib/gcc-lib/i686/3.3.1 hello.o -lgcc -lgcc_eh
+ -lc -lgcc -lgcc_eh /usr/lib/gcc-lib/i686/3.3.1/crtend.o 
+ /usr/lib/crtn.o`
+
+Fortunately there is never any need to type the command above directly--the entire linking process is handled transparently by `gcc` when invoked as follows:
+
+`$ gcc main.o`
+
+`$ ./a.out`
+
+`$Hello, world`
+
+
+This was the final stage to produce the binary file. As you have seen `gcc` is not that hard to understand 
+once you know where to look for.
+
+one last thing, you could instruct `gcc` to show you all output files of the 4 stages by passing it the 
+flag `-save-temps`.  This will tell `gcc` to keep all intermediate files for you to see.
+>
+> [source](http://lampwww.epfl.ch/~fsalvi/docs/gcc/www.network-theory.co.uk/docs/gccintro/gccintro_69.html)
