@@ -12,6 +12,10 @@ module.exports = {
     description: `This blog will discuss various concept, methods and technologies that interest the author such as operating systems, Linux, reverse engineering, ect..`,
     social: [
       {
+        name: `twitter`,
+        url: `https://twitter.com/jamal70070507`,
+      },
+      {
         name: `Linkedin`,
         url: `https://www.linkedin.com/in/jamal-al-119a14152/`,
       },

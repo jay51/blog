@@ -16,6 +16,6 @@ export default () => (
     For questions and comments, you could find me on github
     <br />
     <Styled.a href="https://github.com/jay51">github &nbsp;&nbsp;</Styled.a>
-    <Styled.a href="https://www.linkedin.com/in/jamal-al-119a14152/"> Linkedin</Styled.a>
+    <Styled.a href="https://twitter.com/jamal70070507"> twitter</Styled.a>
   </Fragment>
 )
