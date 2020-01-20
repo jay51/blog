@@ -1,0 +1,155 @@
+---
+title: intro to GAS and  NASM
+date: 2019-11-19
+---
+
+
+### What is an assembler?
+
+Before an assembly program can be executed on a computer, it must be translated into the computer's binary machine code.
+The translation state is done by a program called `assembler`.
+The assembler takes your code and assembly it to an object file and the object file is linked with other object files to form an executable.
+
+There are many object file formats. Some you should know about include:
+- OMF: used in DOS but has 32-bit extensions for Windows. Old.
+- COFF: "Common object file format"
+- ELF, ELF32: Used in modern 32-bit Linux and elsewhere
+- ELF64: Used in 64-bit Linux and elsewhere
+- Win, Win32: Microsoft’s version of COFF, not exactly the same! Replaces OMF
+. . . .
+
+> To make the object file executable, you need a linker that understands
+> the object file formats you produce and can write executable for the os.
+
+> Unix systems use the ld linker. `ld` is part of the gnu assembler collections.
+> Microsoft use LINK.EXE for linking.
+
+[`GAS`](https://sourceware.org/binutils/docs/as/) stands for the GNU Assembler. It's part of the back end of the Gnu compiler collections. The gnu assembler uses the ugly AT&T-style syntax; however you can configure it to use the intel-style syntax.
+
+[`NASM`](https://www.nasm.us/docs.php) stands for The Netwide Assembler. It's free, small, and supports many different types of object files and architectures.
+
+### Simple hello world in x86-64
+##### GAS
+```js
+# bin.s
+
+  .global _start 
+  .text
+start:  
+	# write(1, message, 13)
+ mov $1,  %rax  	# system call 1 is write 
+ mov $1,  %rdi  	# file handle 1 is stdout
+ mov $message, %rsi  	# address of string to output 
+ mov $13,  %rdx 	# number of bytes 
+ syscall 		# invoke operating system to do the write
+  # exit(0)
+ mov $60,  %rax  	# system call 60 is exit 
+ xor %rdi,  %rdi  	# we want return code 0 
+ syscall 		# invoke operating system to exit
+message:  
+.ascii  "Hello, world\n"
+```
+few things to notice here, One, the syntax is a little ugly. Second, comments are prefixed with `#` char.  Third, the use of the `syscall` instruction. the `syscall` instruction invokes an interrupt to jump into the os memory to do some low level work. `syscall`works only in 64 bit mod.
+
+AT&T and Intel syntax use the opposite order for source and destination operands. For example:
+```
+- Intel: mov eax, 4
+- AT&T: mov $4, %eax
+```
+To make This example look a little better we could use the Intel syntax instead of the AT&T.  To use they Intel syntax, you need to add the directive `.intel_syntax noprefix`.
+
+```js
+.intel_syntax noprefix
+.global _start
+        .text
+_start:
+        # write(1, message, 13)
+        mov     rax, 1                 # system call 1 is write
+        mov     rdi, 1                 # file handle 1 is stdout
+        mov     rsi, offset message    # address of string to output
+        mov     rdx, 13                # number of bytes
+        syscall                        # invoke operating system to do the write
+
+        # exit(0)
+        mov     rax, 60                # system call 60 is exit
+        xor     rdi, rdi               # we want return code 0
+        syscall                        # invoke operating system to exit
+message:
+        .ascii  "Hello, world\n"
+```
+Now assemble, link, and run with `as bin.s -o bin.o &&  ld bin.o && ./a.out`.
+
+##### NASM
+```js
+; bin.asm
+          global    _start
+          section   .text
+_start:   mov       rax, 1                  ; system call for write
+          mov       rdi, 1                  ; file handle 1 is stdout
+          mov       rsi, message            ; address of string
+          mov       rdx, 13                 ; number of bytes
+          syscall                           ; invoke operating system to do the write
+          mov       rax, 60                 ; system call for exit
+          xor       rdi, rdi                ; exit code 0
+          syscall                           ; invoke operating system to exit
+
+          section   .data
+message:  
+db        "Hello, World", 10      ; note the newline at the end
+```
+notice here that we use `;` for comments and `db` to define an `ascii` string. The syntax is almost identical except for few minor things. To assemble, link and run this, do `nasm -felf64 bin.asm && ld bin.o && ./a.out`
+
+As a last exercise, we could take a look at the same code in 32 bit mod.
+#### GAS x86-32
+```js
+# bin.s
+.intel_syntax noprefix                                                                                                                                            .global _start  
+        .text
+_start:
+        # write(1, message, 13)
+        mov     eax, 4                 # system call 4 is write
+        mov     ebx, 1                 # stdout file handler
+        mov     ecx, offset message    # address of string
+        mov     edx, 13                # number of bytes
+        int     0x80                   # invoke interrupt
+
+        # exit(0)
+        mov     eax, 1                # system call 60 is exit
+        int     0x80                  # invoke interrupt
+message:
+        .ascii  "Hello, world\n"
+```
+notice 2 things here, One  we use the 32 bit version of the registers and two the number of `write syscall` changes to `4`.
+
+ In 32 bit mode we use the 32 bit version of registers, so for example instead of using `eax` we use `rax`, also the use of different registers for holding data and the use of `int` instruction instead of `syscall` instruction.  
+ To run this code, do `as --32 bin.s -o bin.o && ld -m elf_i386 -s bin.o` then run `./a.out`.
+
+#### NASM x86-32
+```js
+; bin.asm
+          global    _start
+          section   .text
+_start:   mov       eax, 4                 ; system call for write
+          mov       ebx, 1                 ; stdout file handler
+          mov       ecx, message           ; address of string
+          mov       edx, 13                ; number of bytes
+          int       0x80		   ; invoke interrupt
+
+          mov       eax, 1                 ; system call for exit
+          int       0x80                   ; invoke interrupt
+
+          section   .data
+message:  db        "Hello, World", 10 
+```
+Same things here! 
+
+To run this code, do `nasm -f elf bin.asm && ld -m elf_i386 -s bin.o` then run `./a.out`.
+
+#### Other recourse
+- [syscalls](https://blog.rchapman.org/posts/Linux_System_Call_Table_for_x86_64/)
+- [tutorialspoint](https://www.tutorialspoint.com/assembly_programming/assembly_basic_syntax.htm)
+- [Nasm language](https://asmtutor.com/)
+- [IBM](https://developer.ibm.com/articles/l-gas-nasm/)
+- [cs.lmu.edu](https://cs.lmu.edu/~ray/notes/x86assembly/)
+- [cs.lmu.edu](https://cs.lmu.edu/~ray/notes/gasexamples/)
+- [cs.lmu.edu](https://cs.lmu.edu/~ray/notes/nasmtutorial/)
