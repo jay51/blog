@@ -1,0 +1,66 @@
+---
+title: Web Authentication
+date: 2020-06-16
+---
+
+
+### Web Authentication
+Befor we explore the many ways of authenticating on the web, I need to tell that the web was not desinged with authentication in mind. 
+It was desinged to share files between few people in deferent parts of the world. so a lot of the decisions that were made at the time to make this work
+had to layer upon the work of other developers which made it hard to work properly. However authentication is hard generally, so there's no one solution fit all.
+
+#### Authentication Types We will cover:
+    - Basic Authentication
+    - Cookies Authentication
+    - Session Authentication
+    - JWT Authentication
+
+
+# Basic Auth
+
+Basic authentication is a simple authentication mechanism built into the HTTP protocol. The way it works is, The client send an HTTP request to the server
+requesting a webpage and the server respond back saying "This webpage is protected and you need to authenticate to view it". The way the sever does that
+is by sending HTTP response back with the Header `WWW-Authenticate: Basic`. When the `Browser` or client receive this header, it shows you a popup box
+to input your username and password (In the case of a different client other than the Browser, you need to check for that header yourself). Then the 
+Browser base64 encode the username and password and sends it back to the server in `Authorization` Header `Authorization: Basic ZGVtbzpwQDU1dzByZA==`.
+
+For more info on this check [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication)
+
+
+# Cookie Auth
+In the case of Cookie Authentication, it's very similer to Basic Auth. A client trys to access a webpage, server says "you need to authenticat" and sends
+back a `HTML` form for the user to input the data and send it back to server. We then take the data verify the user and store the data in a cookie sent
+in the header for subsequent request because `HTTP` protocol is stateless; meaning we don't remember users. So every connectin is a new connection. 
+
+However this model of authentication is not secure because someone could see the data inside the cookie and steal the data. So what we could do is
+encrypt the cookie with a secret only know by the server and send back the encrypted data. When the Browser make a request we check for the cookie.  If 
+we have a cookie, we decrypt the cookie to extract the `username` and `password`. if we don't have a cookie, it means that this user is not authenticated.
+
+
+![cookie Authentication example](../assets/auth.png)
+
+** This may sound secure now but it's really not because if an attacker was able to capture your cookie, they can the try to decrypt it and steal your
+credentials. **
+
+
+# Session Auth
+Session authentication is exactly the same as cookie authentication but instead of storeing the data inside the cooke and sending it back and forth,
+we instead store the data in a session storege on the server (session storeage could be a file system or a database). 
+And send back a cookie with the hash of the data. Then when the Browser try to access our webpage we check for the hash inside the cookie; if the hash
+is inside our session storeage, it means this person is authenticated otherwise he's not. To deauthenticate someone, we just need to remove that person
+hash from our session storage.
+
+
+
+# JWT Auth
+JWT authentication is very simple and mainly used for making APIs or if your server (back-end) and client (front-end) are separate entities. 
+Similar to `Session Auth`, JWT uses a hash or something that uniquely identifies each user in the database to authenticate users.
+When the user send his information to authenticate, the server will send back a unique ID that identifies each user in the database alongside other info
+if necessary in the [`JWT`](https://jwt.io/) format. Then at that point it's the responsibility of the client (front-end) to store the `JWT` in `local storage` or elsewher
+and send it back to the server on each subsequent request. When the sever gets the `JWT`, it base64 decode it and lookup that user in the database by
+his unique identifier that we stored in the `JWT` and send back the necessary information.
+
+** It's important to say that `JWT` format is not encrypted so don't store cretical data in the `JWT`**
+
+![JWT vs session Authentication example](../assets/cookies&jwt.png)
+
